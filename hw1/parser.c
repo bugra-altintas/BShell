@@ -37,7 +37,7 @@ int parse(char *line, int is_bundle_creation, parsed_input *parsedInput) {
 
         parsedInput->argv = (char **)calloc(argument_count+1, sizeof(char*));
         parsedInput->argv[argument_count] = NULL;
-
+        
         is_quoted = 0;
         index = 0;
         for ( char *current = line; *current ; current++) {
