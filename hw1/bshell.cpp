@@ -1,12 +1,26 @@
 #include <iostream>
 #include <vector>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include "parser.h"
 using namespace std;
 typedef struct process_bundle{
     string bundle_name;
     vector<vector<string>> processes; // every element is a process with optional arguments
 } bundle;
+
+//This function converts a vector of strings to array of strings. It is implemented for giving proper inputs to exec() functions.
+void converter(vector<string>& arr, char**& char_arr){
+    char_arr = (char **) calloc(arr.size() + 1,sizeof(char*));
+    char_arr[arr.size()] = NULL;
+    for(int i=0;i<arr.size();i++){
+        char_arr[i] = (char*) calloc(arr[i].size(),sizeof(char));
+        strcpy(char_arr[i],arr[i].c_str());
+    }
+}
+
+//This function prints all the bundles existing in the system.
 void printBundles(vector<bundle>& bundles){
     cout << "Bundles are:" << endl;
         for(int j=0;j<bundles.size();j++){
@@ -35,13 +49,52 @@ int main(){
             line[i] = inp[i];       // ADJUSTING INPUT
         parsed_input input;
         parse(line,is_bundle_creation,&input);
-        if(!is_bundle_creation){ //bundle creating or executing or quitting
-            // input will be 'pbc' or 'execution' or 'quit' 
+        if(!is_bundle_creation){ //bundle creating or executing or quitting 
             if(input.command.type == QUIT){ // finish the shell
                 break;
             }
-            else if(input.command.type == PROCESS_BUNDLE_EXECUTION){
-                //execute bundle
+            else if(input.command.type == PROCESS_BUNDLE_EXECUTION){ // EXECUTE BUNDLE
+                if(input.command.bundle_count == 1){
+                    string bundle_name(input.command.bundles[0].name);
+                    bundle to_be_executed;
+                    bool found = false;
+                    for(bundle b : bundles){//FIND THE BUNDLE
+                        if(bundle_name.compare(b.bundle_name) == 0){
+                            to_be_executed = b;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if(found){
+                        int nump = to_be_executed.processes.size();
+                        pid_t pid[nump];
+                        int child_status;
+                        for(int i=0;i<nump;i++){// FORK NUMBER OF PROCESSES TIME AND EXECUTE EACH PROCESS IN ONE CHILD
+                            if((pid[i] = fork()) == 0){ //child process
+                                // do the child's work here, execute i'th process in the child.
+                                //convert vector<string> process to char**, call execv()
+                                char ** process;
+                                converter(to_be_executed.processes[i],process);
+                                execv(process[0],process+1);
+                                cout << "hello from " << getpid() << endl;
+                                return 1;
+                            }
+                            else{ //parent
+
+                            }
+                        }
+                        for(int i=0;i<nump;i++) //REAP ALL CHILDS
+                            wait(&child_status);
+                    }
+                    else{
+                        cout << "Bundle " << bundle_name << " couldnt be founded!" << endl;
+                    }
+
+                }
+                else{
+
+                }
+                
             }
             else{ // bundle creation is started, bundle_name set.
                 string name(input.command.bundle_name);
