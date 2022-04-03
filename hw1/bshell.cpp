@@ -17,6 +17,7 @@ int main(){
     vector<bundle> bundles;
     while(true){
         getline(cin,inp);
+        cout <<"change" << endl;
         inp.push_back('\0');
         char line[inp.length()];
         for (int i = 0; i < sizeof(line); i++) 
