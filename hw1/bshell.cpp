@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <signal.h>
 #include "parser.h"
 using namespace std;
 typedef struct process_bundle{
@@ -112,14 +113,21 @@ int main(){
                     for(int i=0;i<input.command.bundle_count-1;i++){
                         pid_t spid = fork();
                         if(spid == 0){ //sender process for bundle1
-                            pid_t rep_pid = fork();
                             int fd_pred[2];
+                            pid_t *sender_pids;
+                            int cs;
+                            int nump;
                             pipe(fd_pred);
+                            int rep_status;
+                            int finish = 0;
+                            pid_t rep_pid = fork();
                             //create a pipe here with fd_pred
                             if(rep_pid > 0){ //sender process, execute bundles[i], writer
+
                                 close(fd_pred[0]); //close read end
                                 dup2(fd_pred[1],1); //redirect output to fd_pred[1]
                                 //find the bundle
+                                int rep_status;
                                 string bundle_name(input.command.bundles[i].name);
                                 bundle to_be_executed; 
                                 bool found = false;
@@ -132,48 +140,77 @@ int main(){
                                 }
                                 if(found){
                                     //fork and exec for each
-                                    int nump = to_be_executed.processes.size();
-                                    pid_t pid[nump];
+                                    nump = to_be_executed.processes.size();
+                                    sender_pids = (pid_t*) calloc(nump,sizeof(pid_t));
                                     int child_status;
                                     for(int j=0;j<nump;j++){// FORK NUMBER OF PROCESSES TIME AND EXECUTE EACH PROCESS IN ONE CHILD
-                                        if((pid[j] = fork()) == 0){ //child process
+                                        if((sender_pids[j] = fork()) == 0){ //child process
                                             //execute i'th process in the child.
                                             //convert vector<string> process to char**, call execv()
-                                            if(bundles[i].input){// if there is a input redirection
+                                            if(i==0 && bundles[i].input){// if there is a input redirection, for only the first bundle
                                                 char* in = bundles[i].input;
                                                 int fd_in = open(in, O_RDONLY);
                                                 dup2(fd_in,0);
                                             }
                                             char** process;
-                                            converter(to_be_executed.processes[i],process);
+                                            converter(to_be_executed.processes[j],process);
                                             execv(process[0],process);
-                                            return 1;
                                         }
                                     }
-                                    for(int k=0;k<nump;k++) //REAP ALL CHILDS
+                                    for(int k=0;k<nump;k++){
+                                        //waitpid(sender_pids[k],&child_status,0);
                                         wait(&child_status);
-                                    return 1;
+                                    } //REAP ALL CHILDS
                                 }
                                 else{
                                     cout << "Bundle " << bundle_name << " can not be found" << endl;
                                 }
-                                
                             }
-                            else{//repeater process
-                                //redirect the input to fd_pred[0]
-                                //create a pipe for each process in bundles[i+1]
-                                pid_t rpid = fork();
-                                if(rpid>0){ //repeater process
-                                    //redirect the output to each pipe
+                            else{//repeater process *****************************************************************
+                                string bundle_name(input.command.bundles[i+1].name);
+                                bundle to_be_executed; 
+                                bool found = false;
+                                for(bundle b : registered_bundles){//FIND THE BUNDLE
+                                    if(bundle_name.compare(b.bundle_name) == 0){
+                                        to_be_executed = b;
+                                        found = true;
+                                        break;
+                                    }
                                 }
-                                else{ //receiver process
-                                    //fork for each process
-                                    //redirect each process' input to corresponding pipe
-                                    //exec process
-                                }
+                                int nump = to_be_executed.processes.size();
+                                int pipes[nump][2];
+                                for(int p = 0;p<nump;p++)
+                                    pipe(pipes[p]);
+                                pid_t recv_pid = fork();
+                                if(recv_pid == 0){ //receiver process
+                                    pid_t recv_pids[nump];
+                                    for(int t = 0;t<nump;t++){
+                                        int* p = pipes[t];
+                                        if((recv_pids[t] = fork()) == 0){ //child process
+                                            //execute i+1'th process in the child.
+                                            close(p[1]); //close write end
+                                            dup2(p[0],0); //redirect stdin to read end
+                                            close(p[0]); //close read end, its duplicated
+                                            char** process;
+                                            converter(to_be_executed.processes[t],process);
+                                            execv(process[0],process);
+                                        }
+                                    }
 
-                                
-                            }
+                                }
+                                else{//repeater process
+                                    close[fd_pred[1]]; //close write end
+                                    char line[10];
+                                    while(1){
+                                        int n = read(fd_pred[0],line,10);
+                                        //write to every pipe
+                                        for(int t = 0;t<nump;t++){
+                                            write(pipes[t][1],line,10);
+                                        }
+                                    }
+                                }
+                                return 1;                              
+                            }//***************************************************************************************
                         }
 
                     }
