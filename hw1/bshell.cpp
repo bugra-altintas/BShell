@@ -14,8 +14,8 @@ typedef struct process_bundle{
 
 //This function converts a vector of strings to array of strings. It is implemented for giving proper inputs to exec() functions.
 void converter(vector<string>& arr, char**& char_arr){
-    char_arr = (char **) calloc(arr.size(),sizeof(char*));
-    char_arr[arr.size()-1] = NULL;
+    char_arr = (char **) calloc(arr.size()+1,sizeof(char*));
+    char_arr[arr.size()] = NULL;
     for(int i=0;i<arr.size();i++){
         char_arr[i] = (char*) calloc(arr[i].size(),sizeof(char));
         strcpy(char_arr[i],arr[i].c_str());
@@ -73,10 +73,10 @@ int main(){
                     string bundle_name(input.command.bundles[0].name);
                     bundle to_be_executed;
                     bool found = false;
-                    for(bundle b : registered_bundles){//FIND THE BUNDLE
-                        if(bundle_name.compare(b.bundle_name) == 0){
-                            to_be_executed = b;
-                            //delete the bundle
+                    for(int b=0;b<registered_bundles.size();b++){
+                        if(bundle_name.compare(registered_bundles[b].bundle_name)==0){
+                            to_be_executed = registered_bundles[b];
+                            registered_bundles.erase(registered_bundles.begin()+b);
                             found = true;
                             break;
                         }
@@ -85,11 +85,9 @@ int main(){
                         pid_t bpid = fork(); // create a process for bundle
                         int cs;
                         if(bpid == 0){ // execute the bundle here
-                            cout << "Executing bundle in child process, " << getpid() << " in parent " << getppid() << endl;
                             int nump = to_be_executed.processes.size();
                             pid_t pid[nump];
                             int child_status;
-
                             if(execution[0].output){//if there is a output redirection
                                 char* out = execution[0].output;
                                 int fd_out = open(out, O_WRONLY | O_APPEND | O_CREAT);
@@ -100,11 +98,11 @@ int main(){
                                 if((pid[i] = fork()) == 0){ //child process
                                     //execute i'th process in the child.
                                     //convert vector<string> process to char**, call execvp()
-                                if(execution[0].input){// if there is a input redirection, it's in loop since file offset
-                                    char* in = execution[0].input;
-                                    int fd_in = open(in, O_RDONLY);
-                                    dup2(fd_in,0);
-                                }
+                                    if(execution[0].input){// if there is a input redirection, it's in loop since file offset
+                                        char* in = execution[0].input;
+                                        int fd_in = open(in, O_RDONLY);
+                                        dup2(fd_in,0);
+                                    }
                                     char** process;
                                     converter(to_be_executed.processes[i],process);
                                     execvp(process[0],process);
@@ -125,10 +123,10 @@ int main(){
                 else{ //pipelining here
                     string bundle_name1(input.command.bundles[0].name);
                     bundle to_be_executed1;
-                    for(bundle b : registered_bundles){//FIND THE BUNDLE1
-                        if(bundle_name1.compare(b.bundle_name) == 0){
-                            to_be_executed1 = b;
-                            //delete the bundle
+                    for(int b=0;b<registered_bundles.size();b++){
+                        if(bundle_name1.compare(registered_bundles[b].bundle_name)==0){
+                            to_be_executed1 = registered_bundles[b];
+                            registered_bundles.erase(registered_bundles.begin()+b);
                             break;
                         }
                     }
@@ -162,10 +160,10 @@ int main(){
                     for(int i=1;i<bundle_count;i++){
                         string bundle_name2(input.command.bundles[i].name);
                         bundle to_be_executed2;
-                        for(bundle b : registered_bundles){//FIND THE BUNDLE2
-                            if(bundle_name2.compare(b.bundle_name) == 0){
-                                to_be_executed2 = b;
-                                //delete the bundle
+                        for(int b=0;b<registered_bundles.size();b++){
+                            if(bundle_name2.compare(registered_bundles[b].bundle_name)==0){
+                                to_be_executed2 = registered_bundles[b];
+                                registered_bundles.erase(registered_bundles.begin()+b);
                                 break;
                             }
                         }
