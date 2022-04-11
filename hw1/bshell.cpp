@@ -144,6 +144,11 @@ int main(){
                         pid_t pid[nump1];
                         for(int p=0;p<nump1;p++){
                             if((pid[p] = fork()) == 0){
+                                if(input.command.bundles[0].input){// if there is a input redirection
+                                    char* in = input.command.bundles[0].input;
+                                    int fd_in = open(in, O_RDONLY);
+                                    dup2(fd_in,0);
+                                }
                                 char** process;
                                 converter(to_be_executed1.processes[p],process);
                                 execv(process[0],process);                                
@@ -190,10 +195,17 @@ int main(){
                         //---fork for bundle[i]
                         pid_t p3 = fork();
                         if(p3 == 0){// successor bundle
-                            if((i+1)<bundle_count){//redirect output to fd_1 pipe
+                            if((i+1)<bundle_count){//if there is a successor
+                                //redirect output to fd_1 pipe
                                 close(fd_1[0]);
                                 dup2(fd_1[1],1);
                                 close(fd_1[1]);
+                            }
+                            else if(input.command.bundles[i].output){//if there is a output redirection
+                                //redirect output to file
+                                char* out = input.command.bundles[i].output;
+                                int fd_out = open(out, O_WRONLY | O_APPEND | O_CREAT);
+                                dup2(fd_out,1); //stdout redirected to 
                             }
                             pid_t pid[nump2];
                             for(int p=0;p<nump2;p++){
