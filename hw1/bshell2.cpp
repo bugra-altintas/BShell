@@ -69,7 +69,7 @@ int main(){
             else if(input.command.type == PROCESS_BUNDLE_EXECUTION){ // EXECUTE BUNDLE
                 bundle_execution *execution = input.command.bundles; 
                 int bundle_count = input.command.bundle_count; 
-                if(input.command.bundle_count == 1){ //no pipelining, //in this case, we use only bundles[0]
+                if(bundle_count == 1){ //no pipelining, //in this case, we use only bundles[0]
                     string bundle_name(input.command.bundles[0].name);
                     bundle to_be_executed;
                     bool found = false;
@@ -186,15 +186,10 @@ int main(){
                         for(int p=0;p<nump2;p++)//outside the repeater, we dont need write end of pipes
                             close(pipes[p][1]);                    
                         //---if there is a successor, create a first pipe
-                        if((i+1)<bundle_count) pipe(fd_1);
+                        if(i+1<bundle_count) pipe(fd_1);
                         //---fork for bundle[i]
                         pid_t p3 = fork();
                         if(p3 == 0){// successor bundle
-                            if((i+1)<bundle_count){//redirect output to fd_1 pipe
-                                close(fd_1[0]);
-                                dup2(fd_1[1],1);
-                                close(fd_1[1]);
-                            }
                             pid_t pid[nump2];
                             for(int p=0;p<nump2;p++){
                                 if((pid[p] = fork()) == 0){
@@ -206,14 +201,11 @@ int main(){
                                     execv(process[0],process);                                
                                 }
                             }
-                            return 1;
                         }
-                        close(fd_1[1]);
                         for(int p=0;p<nump2;p++)//outside the successor, we dont need read end of pipes
                             close(pipes[p][0]);
-                        }              
+                    }
                 }
-            }
             else{ // bundle creation is started, bundle_name set.
                 string name(input.command.bundle_name);
                 new_bundle = new bundle;
