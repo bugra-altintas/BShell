@@ -76,6 +76,7 @@ int main(){
                     for(bundle b : registered_bundles){//FIND THE BUNDLE
                         if(bundle_name.compare(b.bundle_name) == 0){
                             to_be_executed = b;
+                            //delete the bundle
                             found = true;
                             break;
                         }
@@ -98,7 +99,7 @@ int main(){
                             for(int i=0;i<nump;i++){// FORK NUMBER OF PROCESSES TIME AND EXECUTE EACH PROCESS IN ONE CHILD
                                 if((pid[i] = fork()) == 0){ //child process
                                     //execute i'th process in the child.
-                                    //convert vector<string> process to char**, call execv()
+                                    //convert vector<string> process to char**, call execvp()
                                 if(execution[0].input){// if there is a input redirection, it's in loop since file offset
                                     char* in = execution[0].input;
                                     int fd_in = open(in, O_RDONLY);
@@ -106,7 +107,7 @@ int main(){
                                 }
                                     char** process;
                                     converter(to_be_executed.processes[i],process);
-                                    execv(process[0],process);
+                                    execvp(process[0],process);
                                     return 1;
                                 }
                             }
@@ -127,6 +128,7 @@ int main(){
                     for(bundle b : registered_bundles){//FIND THE BUNDLE1
                         if(bundle_name1.compare(b.bundle_name) == 0){
                             to_be_executed1 = b;
+                            //delete the bundle
                             break;
                         }
                     }
@@ -151,7 +153,7 @@ int main(){
                                 }
                                 char** process;
                                 converter(to_be_executed1.processes[p],process);
-                                execv(process[0],process);                                
+                                execvp(process[0],process);                                
                             }
                         }
                         return 1;
@@ -163,6 +165,7 @@ int main(){
                         for(bundle b : registered_bundles){//FIND THE BUNDLE2
                             if(bundle_name2.compare(b.bundle_name) == 0){
                                 to_be_executed2 = b;
+                                //delete the bundle
                                 break;
                             }
                         }
@@ -215,7 +218,7 @@ int main(){
                                     close(pipes[p][0]);
                                     char** process;
                                     converter(to_be_executed2.processes[p],process);
-                                    execv(process[0],process);                                
+                                    execvp(process[0],process);                                
                                 }
                             }
                             return 1;
