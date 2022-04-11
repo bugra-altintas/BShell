@@ -130,12 +130,13 @@ int main(){
                             break;
                         }
                     }
-                    int child_stat[3];
+                    vector<pid_t> pid_all;
                     //---create first pipe
                     int fd_1[2];
                     pipe(fd_1);
                     //---fork for bundle[0]
                     pid_t p1 = fork();
+                    pid_all.push_back(p1);
                     if(p1 == 0){// predecessor bundle
                         close(fd_1[0]); //close read end
                         dup2(fd_1[1],1); //REDIRECT THE OUTPUT TO WRITE END OF FIRST PIPE
@@ -154,6 +155,8 @@ int main(){
                                 execvp(process[0],process);                                
                             }
                         }
+                        for(int i=0;i<nump1;i++) //REAP ALL CHILDS
+                            wait(NULL);
                         return 1;
                     }                   
                     close(fd_1[1]); //outside the predecessor bundle, we dont need write end of first pipe
@@ -174,6 +177,7 @@ int main(){
                             pipe(pipes[p]);
                         //---fork for repeater
                         pid_t p2 = fork();
+                        pid_all.push_back(p2);
                         if(p2 == 0){//repeater process
                             for(int p=0;p<nump2;p++)
                                 close(pipes[p][0]); //inside the repeater process, we dont need read end of pipes
@@ -195,6 +199,7 @@ int main(){
                         if((i+1)<bundle_count) pipe(fd_1);
                         //---fork for bundle[i]
                         pid_t p3 = fork();
+                        pid_all.push_back(p3);
                         if(p3 == 0){// successor bundle
                             if((i+1)<bundle_count){//if there is a successor
                                 //redirect output to fd_1 pipe
@@ -219,12 +224,16 @@ int main(){
                                     execvp(process[0],process);                                
                                 }
                             }
+                            for(int i=0;i<nump2;i++) //REAP ALL CHILDS
+                                wait(NULL);
                             return 1;
                         }
                         close(fd_1[1]);
                         for(int p=0;p<nump2;p++)//outside the successor, we dont need read end of pipes
                             close(pipes[p][0]);
-                        }              
+                    }
+                    for(int w = 0;w<pid_all.size();w++)
+                        wait(NULL);             
                 }
             }
             else{ // bundle creation is started, bundle_name set.
