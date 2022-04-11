@@ -36,6 +36,17 @@ void printBundles(vector<bundle>& bundles){
             }
         }
 }
+void dummy_2p(){
+    pid_t dummy = fork();
+    if(dummy==0){
+        cout << "Predecessor2";
+        return;
+    }
+    else{
+        cout << "Predecessor1Predecessor1Predecessor1Predecessor1Predecessor1Predecessor1";
+        return;
+    }
+}
 int main(){
     int execution = 0; // what shell is doing right now
     string inp;
@@ -110,77 +121,86 @@ int main(){
 
                 }
                 else{ //pipelining here
+                    string bundle_name1(input.command.bundles[0].name);
+                    bundle to_be_executed1;
+                    for(bundle b : registered_bundles){//FIND THE BUNDLE1
+                        if(bundle_name1.compare(b.bundle_name) == 0){
+                            to_be_executed1 = b;
+                            break;
+                        }
+                    }
+                    string bundle_name2(input.command.bundles[1].name);
+                    bundle to_be_executed2;
+                    for(bundle b : registered_bundles){//FIND THE BUNDLE2
+                        if(bundle_name2.compare(b.bundle_name) == 0){
+                            to_be_executed2 = b;
+                            break;
+                        }
+                    }
                     int child_stat[3];
                     int fd_1[2];
                     pipe(fd_1);
                     pid_t p1 = fork();
-                    if(p1 == 0){// predecessor bundle, redirect output to the pipe which is connected to repeater
+                    if(p1 == 0){// predecessor bundle
                         close(fd_1[0]); //close read end
-                        int cs;
-                        dup2(fd_1[1],1);
+                        dup2(fd_1[1],1); //REDIRECT THE OUTPUT TO WRITE END OF FIRST PIPE
                         close(fd_1[1]);
-                        pid_t dummy = fork();
-                        if(dummy==0){
-                            cout << "Predecessor2";
-                            return 0;
+                        int nump1 = to_be_executed1.processes.size();
+                        pid_t pid[nump1];
+                        for(int p=0;p<nump1;p++){
+                            if((pid[p] = fork()) == 0){
+                                char** process;
+                                converter(to_be_executed1.processes[p],process);
+                                execv(process[0],process);                                
+                            }
                         }
-                        else{
-                            cout << "Predecessor1";
-                            return 1;
-                        }
+                        return 1;
                     }
-                    close(fd_1[1]); //close the write end of first pipe from main process
-                    // --------------------SECOND BUNDLE------------------
-                    string bundle_name(input.command.bundles[1].name);
-                    bundle to_be_executed;
-                    for(bundle b : registered_bundles){//FIND THE BUNDLE
-                        if(bundle_name.compare(b.bundle_name) == 0){
-                            to_be_executed = b;
-                            break;
-                        }
-                    } 
-                    int nump = to_be_executed.processes.size();
-                    int pipes[nump][2];
-                    for(int p = 0;p<nump;p++){
+                    close(fd_1[1]); //outside the predecessor bundle, we dont need write end of first pipe
+                    // --------------------SECOND BUNDLE------------------ 
+                    int nump2 = to_be_executed2.processes.size();
+                    int pipes[nump2][2];
+                    for(int p = 0;p<nump2;p++) //create needed pipes for input broadcasting
                         pipe(pipes[p]);
-                    }
                     pid_t p2 = fork();
                     if(p2 == 0){//repeater process
-                        close(fd_1[1]); //close write end of pipe1
-                        for(int p=0;p<nump;p++){
-                            close(pipes[p][0]);
-                        }
-                        char str[10]; //READING FROM PIPE
-                        while(read(fd_1[0],str,10) != 0){
-                            cout << "REPEATER: " << str << endl;
-                            for(int p=0;p<nump;p++){
-                                write(pipes[p][1],str,10);
-                            }                            
-                            memset(str,0,10);
+                        for(int p=0;p<nump2;p++)
+                            close(pipes[p][0]); //inside the repeater process, we dont need read end of pipes
+                        
+                        //REPLICATE INPUT
+                        char c[2]; 
+                        c[1]= '\0';
+                        while(read(fd_1[0],c,1) != 0){
+                            for(int p=0;p<nump2;p++) //write each recevied to each pipe
+                                write(pipes[p][1],c,1);                        
+                            memset(c,0,1);
                        }
                        return 1;
                     }
+                    close(fd_1[0]); //outside the repeater, we dont need read end of first pipe
+                    
+                    for(int p=0;p<nump2;p++)//outside the repeater, we dont need write end of pipes
+                        close(pipes[p][1]);
+                    
                     pid_t p3 = fork();
                     if(p3 == 0){// successor bundle
-                        pid_t pid[nump];
-                        for(int p=0;p<nump;p++){
+                        pid_t pid[nump2];
+                        for(int p=0;p<nump2;p++){
                             if((pid[p] = fork()) == 0){
-                                close(pipes[p][1]);
-                                dup2(pipes[p][0],0);
+                                dup2(pipes[p][0],0);//REDIRECT THE INPUT TO CORRESPONDING PIPE'S READ END
                                 close(pipes[p][0]);
-                                /*char str[20];
-                                read(pipes[p][0],str,20);
-                                cout << str << endl;*/
                                 char** process;
-                                converter(to_be_executed.processes[p],process);
+                                converter(to_be_executed2.processes[p],process);
                                 execv(process[0],process);                                
                             }
                         }
                     }
+                    for(int p=0;p<nump2;p++)//outside the successor, we dont need read end of pipes
+                        close(pipes[p][0]);
+                    
                     waitpid(p1,child_stat,0);
                     waitpid(p2,child_stat+1,0);
-                    waitpid(p3,child_stat+2,0);
-                    cout << "*****************EXECUTION IS OVER******************" << endl;                    
+                    waitpid(p3,child_stat+2,0);                  
                 }
                 
             }
