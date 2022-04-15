@@ -1,0 +1,15 @@
+total 376
+-rwx------ 1 e2380079 gdm 135168 Nis 15 12:53 bshell
+-rw------- 1 e2380079 gdm  13424 Nis 15 12:53 bshell.cpp
+-rwx------ 1 e2380079 gdm 204988 Nis  3 14:38 Ceng334___Homework_1.pdf
+drwx------ 2 e2380079 gdm   4096 Nis 15 12:38 exe
+-rw------- 1 e2380079 gdm      6 Nis  4 13:03 in
+-rw------- 1 e2380079 gdm     77 Nis 11 15:30 Makefile
+-rw------- 1 e2380079 gdm      0 Nis 15 12:53 out
+-rwx------ 1 e2380079 gdm   7135 Nis  3 14:38 parser.c
+-rwx------ 1 e2380079 gdm   3077 Nis  3 14:38 parser.h
+READER: input
+**********************
+586
+19
+This is the hello2 program, This is the hello1 program, input
