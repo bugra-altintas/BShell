@@ -4,7 +4,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
-#include <signal.h>
 #include "parser.h"
 using namespace std;
 typedef struct process_bundle{
@@ -58,55 +57,6 @@ int main(){
             else if(input.command.type == PROCESS_BUNDLE_EXECUTION){ // EXECUTE BUNDLE
                 bundle_execution *execution = input.command.bundles; 
                 int bundle_count = input.command.bundle_count; 
-                /*
-                if(0 && bundle_count == 1){ //no pipelining, //in this case, we use only bundles[0]
-                    string bundle_name(input.command.bundles[0].name);
-                    bundle to_be_executed;
-                    bool found = false;
-                    for(int b=0;b<registered_bundles.size();b++){
-                        if(bundle_name.compare(registered_bundles[b].bundle_name)==0){
-                            to_be_executed = registered_bundles[b];
-                            registered_bundles.erase(registered_bundles.begin()+b);
-                            found = true;
-                            break;
-                        }
-                    }
-                    if(found){
-                        pid_t bpid = fork(); // create a process for bundle
-                        int cs;
-                        if(bpid == 0){ // execute the bundle here
-                            int nump = to_be_executed.processes.size();
-                            pid_t pid[nump];
-                            int child_status;
-                            if(execution[0].output){//if there is a output redirection
-                                char* out = execution[0].output;
-                                int fd_out = open(out, O_WRONLY | O_APPEND | O_CREAT);
-                                dup2(fd_out,1); //stdout redirected to 
-                            }
-                            
-                            for(int i=0;i<nump;i++){// FORK NUMBER OF PROCESSES TIME AND EXECUTE EACH PROCESS IN ONE CHILD
-                                if((pid[i] = fork()) == 0){ //child process
-                                    //execute i'th process in the child.
-                                    //convert vector<string> process to char**, call execvp()
-                                    if(execution[0].input){// if there is a input redirection, it's in loop since file offset
-                                        char* in = execution[0].input;
-                                        int fd_in = open(in, O_RDONLY);
-                                        dup2(fd_in,0);
-                                    }
-                                    char** process;
-                                    converter(to_be_executed.processes[i],process);
-                                    execvp(process[0],process);
-                                    return 1;
-                                }
-                            }
-                            for(int i=0;i<nump;i++) //REAP ALL CHILDS
-                                wait(&child_status);
-                            return 1;
-                        }
-                        wait(&cs);    
-                    }
-                }*/
-                //else{ //pipelining here
                 string bundle_name1(input.command.bundles[0].name);
                 bundle to_be_executed1;
                 for(int b=0;b<registered_bundles.size();b++){
@@ -131,7 +81,7 @@ int main(){
                     }
                     else if(input.command.bundles[0].output){
                         char* out = execution[0].output;
-                        int fd_out = open(out, O_WRONLY | O_APPEND);
+                        int fd_out = open(out, O_WRONLY | O_APPEND | O_CREAT, 0777);
                         dup2(fd_out,1); //stdout redirected to 
                     }
                     int nump1 = to_be_executed1.processes.size();
@@ -203,7 +153,7 @@ int main(){
                         else if(input.command.bundles[i].output){//if there is a output redirection
                             //redirect output to file
                             char* out = input.command.bundles[i].output;
-                            int fd_out = open(out, O_WRONLY | O_APPEND);
+                            int fd_out = open(out, O_WRONLY | O_APPEND | O_CREAT, 0777);
                             dup2(fd_out,1); //stdout redirected to 
                         }
                         pid_t pid[nump2];
@@ -227,7 +177,6 @@ int main(){
                 }
                 for(int w = 0;w<pid_all.size();w++)
                     wait(NULL);             
-                //}
             }
             else{ // bundle creation is started, bundle_name set.
                 string name(input.command.bundle_name);
